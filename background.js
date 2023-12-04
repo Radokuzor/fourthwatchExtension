@@ -13,34 +13,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function saveText(text) {
-
   // send to chat 
-  const apiKey = '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';
-  const apiUrl = 'https://api.openai.com/v1/chat/completions';
+  const apiKey = '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';
+  const apiUrl = 'https://api.openai.com/v1/engines/davinci/completions';
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      prompt: text,
-      max_tokens: 50,  // Adjust as needed
-    }),
-  });
+  try {
+    const question = `Summarize this paragraph for me in simpler terms: ${text}?`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        prompt: question,
+        max_tokens: 50,  // Adjust as needed
+      }),
+    });
 
-  const data = await response.json();
-  console.log(`HTTP error! Status: ${response.status}`)
-  const chatGptResponse = data.choices[0]?.text || 'No response from ChatGPT';
+    console.log('Here is the prompt:', question);
 
-  // Optionally, you can do something with the ChatGPT response, such as log it or display it.
-  console.log('ChatGPT Response:', chatGptResponse);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
 
-  // Notify the popup to update with the latest saved texts
+    const data = await response.json();
+    
+    // Check if 'choices' property is present and has at least one element
+    const chatGptResponse = data.choices && data.choices.length > 0
+      ? data.choices[0].text
+      : 'No response from ChatGPT';
 
-  savedTexts.push(chatGptResponse);
-  chrome.runtime.sendMessage({ action: "updatePopup", texts: savedTexts });
+    // Optionally, you can do something with the ChatGPT response, such as log it or display it.\
+    
+    console.log('ChatGPT Response:', chatGptResponse);
 
-  // chrome.runtime.sendMessage({ action: "updatePopup", texts: savedTexts });
+    // Notify the popup to update with the latest saved texts
+    savedTexts = []
+    savedTexts.push(chatGptResponse);
+    console.log('saved Texts:', savedTexts);
+    chrome.runtime.sendMessage({ action: "updatePopup", texts: savedTexts});
+  } catch (error) {
+    console.error('Error fetching from ChatGPT API:', error.message);
+
+    // Handle the error as needed
+    chrome.runtime.sendMessage({ action: "updatePopup", texts: 'Error fetching from ChatGPT API' });
+  }
 }
+
